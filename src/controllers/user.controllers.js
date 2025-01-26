@@ -32,7 +32,7 @@ const register = async (req, res, next)=>{
 
         const { rows } = await pool.query(
             "INSERT INTO usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia,token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
-            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, "Gente Normal", data.estado, hashedPass, data.tokenNotific,2]
+            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, "Gente Normal", data.estado, hashedPass, data.token_notific,2]
         );
 
         res.status(201).json({
