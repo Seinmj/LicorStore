@@ -251,19 +251,19 @@ const updateUser = async (req, res) => {
 
     if (!rol) {
         return res.status(400).json({
-            message: "El campo 'rol' es obligatorio"
+            message: "El campo 'nombre' es obligatorio"
         });
     }
     const hashedPass = await bcrypt.hash(data.contrasenia, 10);
     try {
         const query = `
             UPDATE usuario
-	        SET  cedula=$1, nombres=$2, apellidos=$3, telefono=$4, correo=$5, rol=$6, estado=$7, contrasenia=$8, id_tipo_usuario=$9, token_notific=$10 
-            WHERE id_usuario = $11
+	        SET  nombres=$1, apellidos=$2, telefono=$3, correo=$4, estado=$5 
+            WHERE id_usuario = $6
             RETURNING *;
         `;
 
-        const { rows } = await pool.query(query, [data.cedula, data.nombres, data.apellidos, data.telefono, data.correo, data.rol, data.estado, hashedPass, data.tipoUsuario, data.tokenNotific, idUsuario]);
+        const { rows } = await pool.query(query, [data.nombres, data.apellidos, data.telefono, data.correo,data.estado,idUsuario]);
 
         if (rows.length === 0) {
             return res.status(404).json({
@@ -329,7 +329,168 @@ const updateUserRole = async (req, res) => {
         });
     }
 };
+const updateUserContrasenia = async (req, res) => {
+    const { idUsuario } = req.params; 
+    const {contrasenia} = req.body; 
 
+    if (!contrasenia) {
+        return res.status(400).json({
+            message: "El campo 'contrasenia' es obligatorio"
+        });
+    }
+    const hashedPass = await bcrypt.hash(contrasenia, 10);
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  contrasenia=$1, 
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [hashedPass, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response:false
+            });
+        }
+
+        res.status(200).json({
+            message: "Contraseña del usuario actualizada con éxito",
+            usuario: rows[0],
+            response:true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar la contraseña",
+            error: err.message,
+            response:false
+        });
+    }
+};
+const updateUserCedula = async (req, res) => {
+    const { idUsuario } = req.params; 
+    const {cedula} = req.body; 
+
+    if (!rol) {
+        return res.status(400).json({
+            message: "El campo 'cedula' es obligatorio"
+        });
+    }
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  cedula=$1, 
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [cedula, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response:false
+            });
+        }
+
+        res.status(200).json({
+            message: "Usuario actualizado con éxito",
+            usuario: rows[0],
+            response:true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el usuario",
+            error: err.message,
+            response:false
+        });
+    }
+};
+const updateUserToken = async (req, res) => {
+    const { idUsuario } = req.params; 
+    const {tokenNotific} = req.body; 
+
+    if (!tokenNotific) {
+        return res.status(400).json({
+            message: "El campo 'tokenNotific' es obligatorio"
+        });
+    }
+    const hashedPass = await bcrypt.hash(token, 10);
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  token_notific=$1
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [tokenNotific, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response:false
+            });
+        }
+
+        res.status(200).json({
+            message: "token del usuario actualizado con éxito",
+            usuario: rows[0],
+            response:true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el token del usuario",
+            error: err.message,
+            response:false
+        });
+    }
+};
+const updateUserEspecial = async (req, res) => {
+    const { idUsuario } = req.params; 
+    const data = req.body; 
+
+    if (!rol) {
+        return res.status(400).json({
+            message: "El campo 'rol' es obligatorio"
+        });
+    }
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  cedula=$1, rol=$2, estado=$3, id_tipo_usuario=$4, token_notific=$5 
+            WHERE id_usuario = $6
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [data.cedula, data.rol, data.estado, data.tipoUsuario, data.tokenNotific, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response:false
+            });
+        }
+
+        res.status(200).json({
+            message: "Usuario actualizado con éxito",
+            usuario: rows[0],
+            response:true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el usuario",
+            error: err.message,
+            response:false
+        });
+    }
+};
 module.exports = {
-    register,registerUserDireccion,registerAdmin,login,getUserStatus,updateUser,updateUserRole
+    register,registerUserDireccion,registerAdmin,login,getUserStatus,updateUser,updateUserRole,updateUserContrasenia,updateUserCedula,updateUserToken,updateUserEspecial
 }
