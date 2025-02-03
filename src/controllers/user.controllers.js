@@ -31,7 +31,7 @@ const register = async (req, res, next) => {
         const hashedPass = await bcrypt.hash(data.contrasenia, 10);
 
         const { rows } = await pool.query(
-            "INSERT INTO public.usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia,token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
+            "INSERT INTO usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia,token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
             [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, "Gente Normal", data.estado, hashedPass, data.token_notific, 2]
         );
 
@@ -70,7 +70,7 @@ const registerAdmin = async (req, res, next) => {
         const hashedPass = await bcrypt.hash(data.contrasenia, 10);
 
         const { rows } = await pool.query(
-            "INSERT INTO public.usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia, token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
+            "INSERT INTO usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia, token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
             [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, data.rol, data.estado, hashedPass, data.token_notific, data.tipoUsuario]
         );
 
@@ -259,7 +259,7 @@ const updateUser = async (req, res) => {
 
     /* if (!rol) {
         return res.status(400).json({
-            message: "El campo 'rol' es obligatorio"
+            message: "El campo 'nombre' es obligatorio"
         });
     } */
     try {
@@ -336,7 +336,168 @@ const updateUserRole = async (req, res) => {
         });
     }
 };
+const updateUserContrasenia = async (req, res) => {
+    const { idUsuario } = req.params;
+    const { contrasenia } = req.body;
 
+    if (!contrasenia) {
+        return res.status(400).json({
+            message: "El campo 'contrasenia' es obligatorio"
+        });
+    }
+    const hashedPass = await bcrypt.hash(contrasenia, 10);
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  contrasenia=$1, 
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [hashedPass, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response: false
+            });
+        }
+
+        res.status(200).json({
+            message: "Contraseña del usuario actualizada con éxito",
+            usuario: rows[0],
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar la contraseña",
+            error: err.message,
+            response: false
+        });
+    }
+};
+const updateUserCedula = async (req, res) => {
+    const { idUsuario } = req.params;
+    const { cedula } = req.body;
+
+    if (!rol) {
+        return res.status(400).json({
+            message: "El campo 'cedula' es obligatorio"
+        });
+    }
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  cedula=$1, 
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [cedula, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response: false
+            });
+        }
+
+        res.status(200).json({
+            message: "Usuario actualizado con éxito",
+            usuario: rows[0],
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el usuario",
+            error: err.message,
+            response: false
+        });
+    }
+};
+const updateUserToken = async (req, res) => {
+    const { idUsuario } = req.params;
+    const { tokenNotific } = req.body;
+
+    if (!tokenNotific) {
+        return res.status(400).json({
+            message: "El campo 'tokenNotific' es obligatorio"
+        });
+    }
+    const hashedPass = await bcrypt.hash(token, 10);
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  token_notific=$1
+            WHERE id_usuario = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [tokenNotific, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response: false
+            });
+        }
+
+        res.status(200).json({
+            message: "token del usuario actualizado con éxito",
+            usuario: rows[0],
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el token del usuario",
+            error: err.message,
+            response: false
+        });
+    }
+};
+const updateUserEspecial = async (req, res) => {
+    const { idUsuario } = req.params;
+    const data = req.body;
+
+    if (!rol) {
+        return res.status(400).json({
+            message: "El campo 'rol' es obligatorio"
+        });
+    }
+    try {
+        const query = `
+            UPDATE usuario
+	        SET  cedula=$1, rol=$2, estado=$3, id_tipo_usuario=$4, token_notific=$5 
+            WHERE id_usuario = $6
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [data.cedula, data.rol, data.estado, data.tipoUsuario, data.tokenNotific, idUsuario]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response: false
+            });
+        }
+
+        res.status(200).json({
+            message: "Usuario actualizado con éxito",
+            usuario: rows[0],
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el usuario",
+            error: err.message,
+            response: false
+        });
+    }
+};
 module.exports = {
-    register, registerUserDireccion, registerAdmin, login, getUserStatus, updateUser, updateUserRole
+    register, registerUserDireccion, registerAdmin, login, getUserStatus, updateUser, updateUserRole, updateUserContrasenia, updateUserCedula, updateUserToken, updateUserEspecial, getUsers
 }
