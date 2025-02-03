@@ -1,3 +1,4 @@
+const { response } = require("express");
 const pool = require("../db/db.js");
 
 const createProducto = async (req, res) => {
@@ -28,13 +29,15 @@ const createProducto = async (req, res) => {
 
         res.status(201).json({
             message: "Producto registrado con éxito",
-            producto: rows[0]
+            producto: rows[0],
+            response: true
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al registrar el producto",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 };
@@ -43,7 +46,7 @@ const getProductos = async (req, res) => {
     const id = req.params.idLicorera;
     try {
         const query = "SELECT p.*, ca.nombre_categoria FROM productos p, categoria ca WHERE ca.id_categoria = p.id_categoria AND p.id_licorera = $1;";
-        const { rows } = await pool.query(query,[id]);
+        const { rows } = await pool.query(query, [id]);
 
         res.status(200).json({
             message: "Lista de productos obtenida con éxito",
@@ -67,19 +70,22 @@ const getProductoById = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: "Producto no encontrado"
+                message: "Producto no encontrado",
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Producto obtenido con éxito",
-            producto: rows[0]
+            productos: rows,
+            response: true
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al obtener el producto",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 };
@@ -92,19 +98,22 @@ const getProductoByIdCategoria = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: "Productos no encontrados"
+                message: "Productos no encontrados",
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Productos obtenidoa con éxito",
-            producto: rows[0]
+            productos: rows,
+            response: true
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al obtener los productos",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 };
@@ -140,19 +149,22 @@ const updateProducto = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: "Producto no encontrado"
+                message: "Producto no encontrado",
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Producto actualizado con éxito",
-            producto: rows[0]
+            producto: rows[0],
+            response: true
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al actualizar el producto",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 };

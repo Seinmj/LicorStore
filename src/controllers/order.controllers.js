@@ -1,3 +1,4 @@
+const { response } = require("express");
 const pool = require("../db/db.js");
 
 const createPedido = async (req, res) => {
@@ -6,8 +7,8 @@ const createPedido = async (req, res) => {
         await pool.query("BEGIN");
         const pedidoQuery = `
             INSERT INTO pedido 
-            (nombre_solicitante, cedula_solicitante, telefono, id_usuario, descripcion, total, fecha_emision, estado) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+            (nombre_solicitante, cedula_solicitante, telefono, id_usuario, descripcion, total, fecha_emision, latitud, longitud, direccion, estado) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
             RETURNING *;
         `;
         const pedidoValues = [
@@ -16,8 +17,11 @@ const createPedido = async (req, res) => {
             data.telefono,
             data.idUsuario,
             data.descripcion,
-            0,
+            data.total_compra,
             data.fechaEmision,
+            data.longitud,
+            data.latitud,
+            data.direccion,
             data.estado
         ];
 
@@ -70,21 +74,21 @@ const createPedido = async (req, res) => {
         res.status(201).json({
             message: "Pedido creado con éxito",
             pedido: pedidoResult.rows[0],
-            response:true
+            response: true
         });
     } catch (error) {
-        await client.query("ROLLBACK");
+        //await client.query("ROLLBACK");
         console.error(error);
         res.status(500).json({
             message: "Error al crear el pedido",
             error: error.message,
-            response:false
+            response: false
         });
     }
 };
 
 const getDetallesByPedidoId = async (req, res) => {
-    const idPedido  = req.params.idPedido;
+    const idPedido = req.params.idPedido;
 
     try {
         const query = `
@@ -160,6 +164,9 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                 p.descripcion,
                 p.total,
                 p.fecha_emision,
+                p.latitud,
+                p.longitud,
+                p.direccion,
                 p.estado,
                 dp.id_detalle,
                 dp.id_producto,
@@ -191,7 +198,8 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: "No se encontraron pedidos con el estado y licorera especificados."
+                message: "No se encontraron pedidos con el estado y licorera especificados.",
+                response: false
             });
         }
 
@@ -204,6 +212,9 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                 descripcion,
                 total,
                 fecha_emision,
+                latitud,
+                longitud,
+                direccion,
                 estado,
                 id_detalle,
                 id_producto,
@@ -240,6 +251,9 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                     descripcion,
                     total,
                     fecha_emision,
+                    latitud,
+                    longitud,
+                    direccion,
                     estado,
                     licorera_nombre,
                     detalles: [detalle],
@@ -254,12 +268,14 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
         res.status(200).json({
             message: "Pedidos obtenidos con éxito",
             pedidos,
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al obtener los pedidos",
             error: err.message,
+            response: false
         });
     }
 };
@@ -362,21 +378,190 @@ const getPedidoById = async (req, res) => {
         res.status(200).json({
             message: "Pedido obtenido con éxito",
             pedido,
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al obtener el pedido",
             error: err.message,
+            response: false
         });
     }
 };
 
+const getPedidoBEstadoAndUserId = async (req, res) => {
+    const { estado, idUsuario } = req.params;
+
+    try {
+        const query = `
+            SELECT 
+                p.id_pedido,
+                p.nombre_solicitante,
+                p.cedula_solicitante,
+                p.telefono,
+                p.descripcion,
+                p.total,
+                p.fecha_emision,
+                p.latitud,
+                p.longitud,
+                dl.latitud AS latitud_licorera,
+                dl.longitud AS longitud_licorera,
+                p.direccion,
+                p.estado,
+                dp.id_detalle,
+                dp.id_producto,
+                dp.cantidad,
+                dp.valor_unitario,
+                dp.subTotal,
+                dp.valor_iva,
+                prod.nombre AS producto_nombre,
+                prod.descripcion AS producto_descripcion,
+                prod.precio_unitario AS producto_precio,
+                lic.nombre AS licorera_nombre
+            FROM 
+                pedido p
+            INNER JOIN 
+                detalle_pedido dp ON p.id_pedido = dp.id_pedido
+            INNER JOIN 
+                productos prod ON dp.id_producto = prod.id_producto
+            INNER JOIN 
+                licorera lic ON prod.id_licorera = lic.id_licorera
+            INNER JOIN
+                direccion_licorera dl ON lic.id_licorera = dl.id_licorera
+            WHERE 
+                p.estado = $1 AND p.id_usuario = $2
+            ORDER BY 
+                p.fecha_emision DESC;
+        `;
+
+        const values = [estado, idUsuario];
+
+        const { rows } = await pool.query(query, values);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: "No se encontraron pedidos con el estado y licorera especificados.",
+                response: false
+            });
+        }
+
+        const pedidos = rows.reduce((acc, row) => {
+            const {
+                id_pedido,
+                nombre_solicitante,
+                cedula_solicitante,
+                telefono,
+                descripcion,
+                total,
+                fecha_emision,
+                latitud,
+                longitud,
+                latitud_licorera,
+                longitud_licorera,
+                direccion,
+                estado,
+                id_detalle,
+                id_producto,
+                cantidad,
+                valor_unitario,
+                subTotal,
+                valor_iva,
+                producto_nombre,
+                producto_descripcion,
+                producto_precio,
+                licorera_nombre,
+            } = row;
+
+            const pedidoIndex = acc.findIndex(p => p.id_pedido === id_pedido);
+
+            const detalle = {
+                id_detalle,
+                id_producto,
+                cantidad,
+                valor_unitario,
+                subTotal,
+                valor_iva,
+                producto_nombre,
+                producto_descripcion,
+                producto_precio,
+            };
+
+            if (pedidoIndex === -1) {
+                acc.push({
+                    id_pedido,
+                    nombre_solicitante,
+                    cedula_solicitante,
+                    telefono,
+                    descripcion,
+                    total,
+                    fecha_emision,
+                    latitud,
+                    longitud,
+                    latitud_licorera,
+                    longitud_licorera,
+                    direccion,
+                    estado,
+                    licorera_nombre,
+                    detalles: [detalle],
+                });
+            } else {
+                acc[pedidoIndex].detalles.push(detalle);
+            }
+
+            return acc;
+        }, []);
+
+        res.status(200).json({
+            message: "Pedidos obtenidos con éxito",
+            pedidos,
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al obtener los pedidos",
+            error: err.message,
+            response: false
+        });
+    }
+}
+
+const updateEstadoPedido = async (req, res) => {
+    const { idPedido } = req.params;
+    const data = req.body;
+
+    try {
+        const query = `
+            UPDATE pedido
+            SET estado = $1
+            WHERE id_pedido = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await pool.query(query, [data.estado, idPedido]);
+
+        res.status(200).json({
+            message: "Estado del pedido actualizado con éxito",
+            pedido: rows[0],
+            response: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            message: "Error al actualizar el estado del pedido",
+            error: err.message,
+            response: false
+        });
+    }
+}
 
 module.exports = {
     createPedido,
     getDetallesByPedidoId,
     getPedidoById,
     getPedidosByEstadoAndLicorera,
-    updateTotalPedido
+    getPedidoBEstadoAndUserId,
+    updateTotalPedido,
+    updateEstadoPedido
 };

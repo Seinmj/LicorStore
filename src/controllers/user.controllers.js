@@ -3,18 +3,18 @@ const pool = require("../db/db.js");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const getUsers = async (req, res)=>{
-    const {rows} = await pool.query("SELECT * FROM users;")
+const getUsers = async (req, res) => {
+    const { rows } = await pool.query("SELECT * FROM users;")
     res.status(200).json({
-        usuarios:rows,
-        response:true
+        usuarios: rows,
+        response: true
     })
 }
-const register = async (req, res, next)=>{
+const register = async (req, res, next) => {
     const data = req.body;
     try {
         const checkQuery = `
-            SELECT * FROM usuario 
+            SELECT * FROM public.usuario 
             WHERE correo = $1 OR cedula = $2
         `;
         const checkResult = await pool.query(checkQuery, [data.correo, data.cedula]);
@@ -22,34 +22,34 @@ const register = async (req, res, next)=>{
         if (checkResult.rows.length > 0) {
 
             return res.status(400).json({
-                message: "El correo o el cédula ya están registrados",
+                message: "El correo o la cédula ya están registrados",
                 error: "Duplicated fields",
-                response:false
+                response: false
             });
         }
 
         const hashedPass = await bcrypt.hash(data.contrasenia, 10);
 
         const { rows } = await pool.query(
-            "INSERT INTO usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia,token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
-            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, "Gente Normal", data.estado, hashedPass, data.tokenNotific,2]
+            "INSERT INTO public.usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia,token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
+            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, "Gente Normal", data.estado, hashedPass, data.token_notific, 2]
         );
 
         res.status(201).json({
             message: "Usuario registrado con éxito",
             usuario: rows[0],
-            response:true
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al registrar el usuario",
             error: err.message,
-            response:false
+            response: false
         });
     }
 }
-const registerAdmin = async (req, res, next)=>{
+const registerAdmin = async (req, res, next) => {
     const data = req.body;
     try {
         const checkQuery = `
@@ -61,30 +61,30 @@ const registerAdmin = async (req, res, next)=>{
         if (checkResult.rows.length > 0) {
 
             return res.status(400).json({
-                message: "El correo o el cédula ya están registrados",
+                message: "El correo o la cédula ya están registrados",
                 error: "Duplicated fields",
-                response:false
+                response: false
             });
         }
 
         const hashedPass = await bcrypt.hash(data.contrasenia, 10);
 
         const { rows } = await pool.query(
-            "INSERT INTO usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia, token_notific,id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
-            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, data.rol, data.estado, hashedPass,data.tokenNotific, data.tipoUsuario]
+            "INSERT INTO public.usuario (cedula, nombres, apellidos, correo, telefono, rol, estado, contrasenia, token_notific, id_tipo_usuario) VALUES ($1, $2, $3, $4, $5, $6, $7,$8,$9,$10) RETURNING *",
+            [data.cedula, data.nombres, data.apellidos, data.correo, data.telefono, data.rol, data.estado, hashedPass, data.token_notific, data.tipoUsuario]
         );
 
         res.status(201).json({
             message: "Usuario registrado con éxito",
             usuario: rows[0],
-            response:true
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al registrar el usuario",
             error: err.message,
-            response:false
+            response: false
         });
     }
 }
@@ -160,12 +160,12 @@ const registerUserDireccion = async (req, res) => {
     }
 };
 
-const login = async(req, res, next)=>{
+const login = async (req, res, next) => {
     const { cedula, contrasenia } = req.body;
 
     try {
         const result = await pool.query(
-            "SELECT id_usuario, nombres, apellidos, contrasenia FROM usuario WHERE cedula = $1",
+            "SELECT id_usuario, nombres, apellidos, contrasenia, cedula, correo, telefono, token_notific, rol, estado, id_tipo_usuario FROM usuario WHERE cedula = $1",
             [cedula]
         );
 
@@ -194,9 +194,16 @@ const login = async(req, res, next)=>{
         );
 
         const usuario = {
-            id: user.id_usuario,
+            id_usuario: user.id_usuario,
             nombres: user.nombres,
-            apellidos: user.apellidos
+            apellidos: user.apellidos,
+            cedula: user.cedula,
+            telefono: user.telefono,
+            correo: user.correo,
+            tokenNotific: user.token_notific,
+            rol: user.rol,
+            estado: user.estado,
+            id_tipo_usuario: user.id_tipo_usuario
         };
 
         return res.status(200).json({
@@ -215,8 +222,7 @@ const login = async(req, res, next)=>{
     }
 }
 const getUserStatus = async (req, res) => {
-    const { idUsuario } = req.params;
-
+    const { idUsuario } = req.query;
     try {
         const query = `
             SELECT estado 
@@ -228,72 +234,73 @@ const getUserStatus = async (req, res) => {
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: `No se encontró un usuario con el ID ${idUsuario}`
+                message: `No se encontró un usuario con el ID ${idUsuario}`,
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Estado del usuario obtenido con éxito",
             estado: rows[0].estado,
-            response:true
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al obtener el estado del usuario",
-            error: err.message
+            error: err.message,
+            response: false
         });
     }
 };
 const updateUser = async (req, res) => {
-    const { idUsuario } = req.params; 
-    const data = req.body; 
+    const { idUsuario } = req.params;
+    const data = req.body;
 
-    if (!rol) {
+    /* if (!rol) {
         return res.status(400).json({
             message: "El campo 'rol' es obligatorio"
         });
-    }
-    const hashedPass = await bcrypt.hash(data.contrasenia, 10);
+    } */
     try {
         const query = `
             UPDATE usuario
-	        SET  cedula=$1, nombres=$2, apellidos=$3, telefono=$4, correo=$5, rol=$6, estado=$7, contrasenia=$8, id_tipo_usuario=$9, token_notific=$10 
-            WHERE id_usuario = $11
+	        SET  cedula=$1, nombres=$2, apellidos=$3, telefono=$4, correo=$5, rol=$6, estado=$7, id_tipo_usuario=$8, token_notific=$9 
+            WHERE id_usuario = $10
             RETURNING *;
         `;
 
-        const { rows } = await pool.query(query, [data.cedula, data.nombres, data.apellidos, data.telefono, data.correo, data.rol, data.estado, hashedPass, data.tipoUsuario, data.tokenNotific, idUsuario]);
+        const { rows } = await pool.query(query, [data.cedula, data.nombres, data.apellidos, data.telefono, data.correo, data.rol, data.estado, data.id_tipo_usuario, data.token_notific, idUsuario]);
 
         if (rows.length === 0) {
             return res.status(404).json({
                 message: `No se encontró un usuario con el ID ${idUsuario}`,
-                response:false
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Usuario actualizado con éxito",
             usuario: rows[0],
-            response:true
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al actualizar el usuario",
             error: err.message,
-            response:false
+            response: false
         });
     }
 };
 const updateUserRole = async (req, res) => {
-    const { idUsuario } = req.params; 
-    const { rol,tipoUsuario } = req.body; 
+    const { idUsuario } = req.params;
+    const { rol, tipoUsuario } = req.body;
 
     if (!rol) {
         return res.status(400).json({
             message: "El campo 'rol' es obligatorio",
-            response:false
+            response: false
         });
     }
 
@@ -311,25 +318,25 @@ const updateUserRole = async (req, res) => {
         if (rows.length === 0) {
             return res.status(404).json({
                 message: `No se encontró un usuario con el ID ${idUsuario}`,
-                response:false
+                response: false
             });
         }
 
         res.status(200).json({
             message: "Rol del usuario actualizado con éxito",
             usuario: rows[0],
-            response:true
+            response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
             message: "Error al actualizar el rol del usuario",
             error: err.message,
-            response:false
+            response: false
         });
     }
 };
 
 module.exports = {
-    register,registerUserDireccion,registerAdmin,login,getUserStatus,updateUser,updateUserRole
+    register, registerUserDireccion, registerAdmin, login, getUserStatus, updateUser, updateUserRole
 }

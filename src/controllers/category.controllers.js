@@ -1,21 +1,23 @@
 const pool = require("../db/db.js");
 
-const createCategoria = async (req, res)=>{
+const createCategoria = async (req, res) => {
     const data = req.body;
-    const query= "INSERT INTO categoria(nombre_categoria, descripcion,id_licorera) VALUES ($1, $2, $3); RETURNING *";
+    const query = "INSERT INTO categoria(nombre_categoria, descripcion,id_licorera) VALUES ($1, $2, $3) RETURNING *";
     try {
-        const {rows} = await pool.query(query,
-            [data.nombreCategoria,data.descripcion,data.idLicorera]
+        const { rows } = await pool.query(query,
+            [data.nombreCategoria, data.descripcion, data.idLicorera]
         );
         res.status(200).json({
             message: "Categoria registrada",
-            direccio:rows[0]
+            categoria: rows[0],
+            response: true
         })
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al crear la categoria",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 }
@@ -24,17 +26,26 @@ const getCategorias = async (req, res) => {
     const id = req.params.idLicorera;
     try {
         const query = "SELECT * FROM categoria WHERE id_licorera=$1;";
-        const { rows } = await pool.query(query,[id]);
+        const { rows } = await pool.query(query, [id]);
 
-        res.status(200).json({
-            message: "Lista de categorias obtenida con éxito",
-            categorias: rows
-        });
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: "Categorias no encontradas",
+                response: false
+            });
+        } else {
+            res.status(200).json({
+                message: "Lista de categorias obtenida con éxito",
+                categorias: rows,
+                response: true
+            });
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({
             message: "Error al obtener las categorias",
-            error: error.message
+            error: error.message,
+            response: false
         });
     }
 };
@@ -101,7 +112,7 @@ const deleteCategoria = async (req, res) => {
         });
     }
 };
-module.exports={
+module.exports = {
     createCategoria,
     deleteCategoria,
     getCategorias,
