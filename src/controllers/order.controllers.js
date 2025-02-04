@@ -292,6 +292,11 @@ const getPedidoById = async (req, res) => {
                 p.descripcion,
                 p.total,
                 p.fecha_emision,
+                p.latitud,
+                p.longitud,
+                dl.latitud AS latitud_licorera,
+                dl.longitud AS longitud_licorera,
+                p.direccion,
                 p.estado,
                 dp.id_detalle,
                 dp.id_producto,
@@ -311,21 +316,68 @@ const getPedidoById = async (req, res) => {
                 productos prod ON dp.id_producto = prod.id_producto
             INNER JOIN 
                 licorera lic ON prod.id_licorera = lic.id_licorera
+            INNER JOIN
+                direccion_licorera dl ON lic.id_licorera = dl.id_licorera
             WHERE 
-                p.id_pedido = $1;
+                p.id_pedido = $1 AND dp.id_pedido = $1
+            ORDER BY 
+                p.fecha_emision DESC;
         `;
 
-        const { rows } = await pool.query(query, [idPedido]);
+        const values = [idPedido];
+
+        const { rows } = await pool.query(query, values);
 
         if (rows.length === 0) {
             return res.status(404).json({
-                message: "No se encontró el pedido con el ID especificado.",
+                message: "No se encontraron pedidos con el estado y licorera especificados.",
+                response: false
             });
         }
 
-        const pedido = rows.reduce(
-            (acc, row) => {
-                const {
+        const pedidos = rows.reduce((acc, row) => {
+            const {
+                id_pedido,
+                nombre_solicitante,
+                cedula_solicitante,
+                telefono,
+                descripcion,
+                total,
+                fecha_emision,
+                latitud,
+                longitud,
+                latitud_licorera,
+                longitud_licorera,
+                direccion,
+                estado,
+                id_detalle,
+                id_producto,
+                cantidad,
+                valor_unitario,
+                subTotal,
+                valor_iva,
+                producto_nombre,
+                producto_descripcion,
+                producto_precio,
+                licorera_nombre,
+            } = row;
+
+            const pedidoIndex = acc.findIndex(p => p.id_pedido === id_pedido);
+
+            const detalle = {
+                id_detalle,
+                id_producto,
+                cantidad,
+                valor_unitario,
+                subTotal,
+                valor_iva,
+                producto_nombre,
+                producto_descripcion,
+                producto_precio,
+            };
+
+            if (pedidoIndex === -1) {
+                acc.push({
                     id_pedido,
                     nombre_solicitante,
                     cedula_solicitante,
@@ -333,57 +385,31 @@ const getPedidoById = async (req, res) => {
                     descripcion,
                     total,
                     fecha_emision,
+                    latitud,
+                    longitud,
+                    latitud_licorera,
+                    longitud_licorera,
+                    direccion,
                     estado,
-                    id_detalle,
-                    id_producto,
-                    cantidad,
-                    valor_unitario,
-                    subTotal,
-                    valor_iva,
-                    producto_nombre,
-                    producto_descripcion,
-                    producto_precio,
                     licorera_nombre,
-                } = row;
-
-                if (!acc.detalles) acc.detalles = [];
-
-                acc.id_pedido = id_pedido;
-                acc.nombre_solicitante = nombre_solicitante;
-                acc.cedula_solicitante = cedula_solicitante;
-                acc.telefono = telefono;
-                acc.descripcion = descripcion;
-                acc.total = total;
-                acc.fecha_emision = fecha_emision;
-                acc.estado = estado;
-                acc.licorera_nombre = licorera_nombre;
-
-                acc.detalles.push({
-                    id_detalle,
-                    id_producto,
-                    cantidad,
-                    valor_unitario,
-                    subTotal,
-                    valor_iva,
-                    producto_nombre,
-                    producto_descripcion,
-                    producto_precio,
+                    detalles: [detalle],
                 });
+            } else {
+                acc[pedidoIndex].detalles.push(detalle);
+            }
 
-                return acc;
-            },
-            {}
-        );
+            return acc;
+        }, []);
 
         res.status(200).json({
-            message: "Pedido obtenido con éxito",
-            pedido,
+            message: "Pedidos obtenidos con éxito",
+            pedidos: pedidos[0],
             response: true
         });
     } catch (err) {
         console.error(err);
         res.status(500).json({
-            message: "Error al obtener el pedido",
+            message: "Error al obtener los pedidos",
             error: err.message,
             response: false
         });

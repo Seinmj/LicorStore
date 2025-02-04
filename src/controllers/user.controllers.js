@@ -342,14 +342,15 @@ const updateUserContrasenia = async (req, res) => {
 
     if (!contrasenia) {
         return res.status(400).json({
-            message: "El campo 'contrasenia' es obligatorio"
+            message: "El campo 'contrasenia' es obligatorio",
+            response: false
         });
     }
     const hashedPass = await bcrypt.hash(contrasenia, 10);
     try {
         const query = `
             UPDATE usuario
-	        SET  contrasenia=$1, 
+	        SET  contrasenia=$1 
             WHERE id_usuario = $2
             RETURNING *;
         `;
