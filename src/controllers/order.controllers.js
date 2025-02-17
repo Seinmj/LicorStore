@@ -160,6 +160,7 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                 p.id_pedido,
                 p.nombre_solicitante,
                 p.cedula_solicitante,
+                u.token_notific,
                 p.telefono,
                 p.descripcion,
                 p.total,
@@ -186,6 +187,8 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                 productos prod ON dp.id_producto = prod.id_producto
             INNER JOIN 
                 licorera lic ON prod.id_licorera = lic.id_licorera
+            INNER JOIN
+                usuario u ON p.id_usuario = u.id_usuario
             WHERE 
                 p.estado = $1 AND lic.id_licorera = $2
             ORDER BY 
@@ -208,6 +211,7 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                 id_pedido,
                 nombre_solicitante,
                 cedula_solicitante,
+                token_notific,
                 telefono,
                 descripcion,
                 total,
@@ -247,6 +251,7 @@ const getPedidosByEstadoAndLicorera = async (req, res) => {
                     id_pedido,
                     nombre_solicitante,
                     cedula_solicitante,
+                    token_notific,
                     telefono,
                     descripcion,
                     total,
@@ -288,6 +293,7 @@ const getPedidoById = async (req, res) => {
                 p.id_pedido,
                 p.nombre_solicitante,
                 p.cedula_solicitante,
+                u.token_notific,
                 p.telefono,
                 p.descripcion,
                 p.total,
@@ -307,6 +313,7 @@ const getPedidoById = async (req, res) => {
                 prod.nombre AS producto_nombre,
                 prod.descripcion AS producto_descripcion,
                 prod.precio_unitario AS producto_precio,
+                lic.id_licorera,
                 lic.nombre AS licorera_nombre
             FROM 
                 pedido p
@@ -316,6 +323,8 @@ const getPedidoById = async (req, res) => {
                 productos prod ON dp.id_producto = prod.id_producto
             INNER JOIN 
                 licorera lic ON prod.id_licorera = lic.id_licorera
+            INNER JOIN
+                usuario u ON p.id_usuario = u.id_usuario
             INNER JOIN
                 direccion_licorera dl ON lic.id_licorera = dl.id_licorera
             WHERE 
@@ -338,8 +347,10 @@ const getPedidoById = async (req, res) => {
         const pedidos = rows.reduce((acc, row) => {
             const {
                 id_pedido,
+                id_licorera,
                 nombre_solicitante,
                 cedula_solicitante,
+                token_notific,
                 telefono,
                 descripcion,
                 total,
@@ -379,8 +390,10 @@ const getPedidoById = async (req, res) => {
             if (pedidoIndex === -1) {
                 acc.push({
                     id_pedido,
+                    id_licorera,
                     nombre_solicitante,
                     cedula_solicitante,
+                    token_notific,
                     telefono,
                     descripcion,
                     total,
@@ -425,6 +438,7 @@ const getPedidoBEstadoAndUserId = async (req, res) => {
                 p.id_pedido,
                 p.nombre_solicitante,
                 p.cedula_solicitante,
+                u.token_notific,
                 p.telefono,
                 p.descripcion,
                 p.total,
@@ -455,6 +469,8 @@ const getPedidoBEstadoAndUserId = async (req, res) => {
                 licorera lic ON prod.id_licorera = lic.id_licorera
             INNER JOIN
                 direccion_licorera dl ON lic.id_licorera = dl.id_licorera
+            INNER JOIN
+                usuario u ON p.id_usuario = u.id_usuario
             WHERE 
                 p.estado = $1 AND p.id_usuario = $2
             ORDER BY 
@@ -477,6 +493,7 @@ const getPedidoBEstadoAndUserId = async (req, res) => {
                 id_pedido,
                 nombre_solicitante,
                 cedula_solicitante,
+                token_notific,
                 telefono,
                 descripcion,
                 total,
@@ -518,6 +535,7 @@ const getPedidoBEstadoAndUserId = async (req, res) => {
                     id_pedido,
                     nombre_solicitante,
                     cedula_solicitante,
+                    token_notific,
                     telefono,
                     descripcion,
                     total,

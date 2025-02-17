@@ -23,9 +23,10 @@ const createLicorera = async (req, res) => {
 
 const getLicoreras = async (req, res) => {
     try {
-        const query = `SELECT * 
+        const query = `SELECT licorera.*, direccion_licorera.*, usuario.token_notific
         FROM licorera
-        INNER JOIN direccion_licorera ON licorera.id_licorera = direccion_licorera.id_licorera;`;
+        INNER JOIN direccion_licorera ON licorera.id_licorera = direccion_licorera.id_licorera
+        INNER JOIN usuario ON licorera.id_usuario = usuario.id_usuario;`;
         const { rows } = await pool.query(query);
 
         if (rows.length === 0) {
